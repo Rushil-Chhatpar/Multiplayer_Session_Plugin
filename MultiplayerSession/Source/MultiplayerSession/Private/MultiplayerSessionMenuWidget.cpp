@@ -2,10 +2,15 @@
 
 
 #include "MultiplayerSessionMenuWidget.h"
+
+#include "MultiplayerSessionSlotWidget.h"
 #include "Components/Button.h"
 #include "MultiplayerSessionSubsystem.h"
 #include "OnlineSessionSettings.h"
 #include "OnlineSubsystem.h"
+#include "Components/EditableText.h"
+#include "Components/WidgetSwitcher.h"
+#include "Components/ScrollBox.h"
 #include "GameFramework/GameModeBase.h"
 
 
@@ -24,11 +29,14 @@ void UMultiplayerSessionMenuWidget::MenuSetup()
         {
             // Create and set input mode data for the menu widget
             FInputModeUIOnly InputModeData;
+            FInputModeGameAndUI InputMode;
+            InputMode.SetWidgetToFocus(TakeWidget());
+            InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
             InputModeData.SetWidgetToFocus(TakeWidget());
             InputModeData.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 
             // Set input mode data for the player controller
-            PlayerController->SetInputMode(InputModeData);
+            PlayerController->SetInputMode(InputMode);
 
             PlayerController->SetShowMouseCursor(true);
         }
@@ -59,6 +67,12 @@ bool UMultiplayerSessionMenuWidget::Initialize()
         HostButton->OnClicked.AddDynamic(this, &ThisClass::HostButtonClicked);
     if (JoinButton)
         JoinButton->OnClicked.AddDynamic(this, &ThisClass::JoinButtonClicked);
+    if (ServerBackButton)
+        ServerBackButton->OnClicked.AddDynamic(this, &ThisClass::ServerBackButtonClicked);
+    if (JoinBackButton)
+        JoinBackButton->OnClicked.AddDynamic(this, &ThisClass::JoinBackButtonClicked);
+    if (CreateServerButton)
+        CreateServerButton->OnClicked.AddDynamic(this, &ThisClass::CreateServerButtonClicked);
 
     return true;
 }
@@ -86,7 +100,16 @@ void UMultiplayerSessionMenuWidget::OnFindSession(const TArray<FOnlineSessionSea
 
     for (auto SearchResult : SearchResults)
     {
-        
+        UMultiplayerSessionSlotWidget* ServerSlot = CreateWidget<UMultiplayerSessionSlotWidget>(this->GetGameInstance(), ServerSlotClass);
+        //UMultiplayerSessionSlotWidget* ServerSlot = Cast<UMultiplayerSessionSlotWidget>(SlotWidget);
+        if (ServerSlot)
+        {
+            FString ServerName;
+            SearchResult.Session.SessionSettings.Get("SERVER_NAME_KEY", ServerName);
+
+            ServerSlot->MenuSetup(SearchResult, ServerName);
+            ServerlListBox->AddChild(ServerSlot);
+        }
     }
 }
 
@@ -146,16 +169,40 @@ void UMultiplayerSessionMenuWidget::MenuTearDown()
 
 void UMultiplayerSessionMenuWidget::HostButtonClicked()
 {
-    if(MultiplayerSessionSubsystem)
-    {
-        MultiplayerSessionSubsystem->CreateSession(4);
-    }
+    WidgetSwitcher->SetActiveWidgetIndex(1);
+
+    //if(MultiplayerSessionSubsystem)
+    //{
+    //    MultiplayerSessionSubsystem->CreateSession(4);
+    //}
 }
 
 void UMultiplayerSessionMenuWidget::JoinButtonClicked()
 {
+    WidgetSwitcher->SetActiveWidgetIndex(2);
     if(MultiplayerSessionSubsystem)
     {
         MultiplayerSessionSubsystem->FindSession(10000);
     }
+}
+
+void UMultiplayerSessionMenuWidget::ServerBackButtonClicked()
+{
+    WidgetSwitcher->SetActiveWidgetIndex(0);
+}
+
+void UMultiplayerSessionMenuWidget::JoinBackButtonClicked()
+{
+    WidgetSwitcher->SetActiveWidgetIndex(0);
+}
+
+void UMultiplayerSessionMenuWidget::CreateServerButtonClicked()
+{
+    FString ServerName = ServerNameEditableText->GetText().ToString();
+    if (MultiplayerSessionSubsystem)
+    {
+        MultiplayerSessionSubsystem->CreateSession(2, ServerName);
+    }
+    
+    
 }
